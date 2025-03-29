@@ -1,0 +1,20 @@
+[project]
+name = "Super Auto Boiz"
+description = "A Boiz themed super auto pets game"
+dependencies = []
+
+[tool.black]
+line-length = 88
+target-version = ['py312']
+exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.pytest_cache
+  | \.vscode
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
