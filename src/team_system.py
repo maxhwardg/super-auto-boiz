@@ -4,90 +4,95 @@ This is the base class for team-related systems in the game.
 These include the BattleSystem and the ShopSystem.
 """
 
-from typing import List
+from typing import List, Optional, Deque
+from collections import deque
+from abc import ABC, abstractmethod
 
 from boi import Boi
 from system import System, Event
 from team import Team
 
 
-class TeamSystem(System):
+class TeamSystem(System, ABC):
     """
     The TeamSystem manages teams of bois.
+    This the base class for team-related systems in the game.
+    These include the BattleSystem and the ShopSystem.
+    These systems have either 2 or 1 teams respectively.
+    They also operate using an event queue.
+    This class includes these functionalities.
     """
 
     def __init__(self, teams: List[Team]) -> None:
         super().__init__()
         self.teams = teams
+        self.event_queue: Deque[Event] = deque()
 
-    def _process_team_system_events(self, event: Event) -> None:
+    def send_event(self, event: Event) -> None:
         """
-        Process team system events.
-        Currently, this is targeting bois and teams.
+        Process an event related to the team system.
+        Since an event queue is used, simply add it without processing it.
+        Events are processed by the _process_all_queue_events method.
         """
-        if "target_boi" in event.data:
-            self._handle_target_boi(event)
-        if "target_team" in event.data:
-            self._handle_target_team(event)
-        if event.type == "damage":
-            self._handle_damage(event)
+        self.event_queue.append(event)
 
-    def _get_target_boi(self, event: Event) -> Boi:
-        team_id, boi_id = event.data["target_boi"]
-        return self.teams[team_id].bois[boi_id]
+    def num_teams(self) -> int:
+        """
+        Returns the number of teams.
+        Can be used to check if the system is a BattleSystem or a ShopSystem.
+        """
+        return len(self.teams)
 
-    def _handle_damage(self, event: Event) -> None:
-        boi = self._get_target_boi(event)
-        boi.health -= event.data["damage"]
+    def replace_boi(self, boi: Boi, with_boi: Boi) -> None:
+        """
+        Replaces the specified Boi with another Boi in the team system.
+        This puts the new boi in the same team and position as the old one.
+        """
+        team = self.boi_team(boi)
+        if team is None:
+            raise ValueError("Boi not found in any team")
+        idx = self.teams[team].bois.index(boi)
+        self.teams[team].bois[idx] = with_boi
 
-    def _handle_target_boi(self, event: Event) -> None:
+    def boi_team(self, boi: Boi) -> Optional[int]:
         """
-        Handle the targeting of a Boi in the battle with the given event.
+        Returns the team number of the specified Boi.
         """
-        team_id, boi_id = event.data["target_boi"]
-        self._validate_target(boi_id, team_id)
-        self.teams[team_id].bois[boi_id].trigger(event)
+        for i, team in enumerate(self.teams):
+            if boi in team.bois:
+                return i
+        return None
 
-    def _handle_target_team(self, event: Event) -> None:
+    def other_team(self, boi: Boi) -> Team:
         """
-        Handle the targeting of every boi in a team.
+        Returns the other team of the specified Boi.
+        E.g., the enemy team in a battle.
+        Returns an empty team if there aren't exactly 2 teams.
         """
-        team_id = event.data["target_team"]
-        if team_id not in [0, 1]:
-            return
-        for boi in self.teams[team_id].bois:
-            boi.trigger(event)
+        if self.num_teams() != 2:
+            return Team([])  # Empty team if not a battle system
+        team_number = self.boi_team(boi)
+        assert team_number is not None, "Boi not found in any team"
+        return self.teams[1 - team_number]
 
-    def _validate_target(self, boi_id: int, team_id: int) -> None:
+    def _process_all_queue_events(self) -> None:
         """
-        Validate the target Boi and Team.
+        Processes elements on the event queue until the queue is empty.
         """
-        if team_id not in [0, 1]:
-            raise ValueError("Invalid team ID.")
-        if boi_id < 0 or boi_id >= len(self.teams[team_id].bois):
-            raise ValueError("Invalid boi ID.")
+        while self.event_queue:
+            self._process_queue_event(self.event_queue.popleft())
 
-    def _is_dead(self, boi: Boi) -> bool:
+    @abstractmethod
+    def _process_queue_event(self, event: Event) -> None:
         """
-        Returns True if the specified Boi is dead, False otherwise.
+        Processes events in the queue.
         """
-        return boi.health <= 0
 
     def _remove_boi(self, boi: Boi):
         """
         Removes the specified Boi from the battle.
         """
-        if boi not in self.teams[boi.team].bois:
-            raise ValueError("Boi not in this team.")
-        self.teams[boi.team].bois.remove(boi)
-        # Renumerate bois in the team
-        self._renumerate_bois(boi.team)
-
-    def _renumerate_bois(self, team_id: int) -> None:
-        """
-        Renumerate bois in both teams.
-        """
-        if team_id not in [0, 1]:
-            raise ValueError("Invalid team ID.")
-        for i, boi in enumerate(self.teams[team_id].bois):
-            boi.team_pos = i
+        for team in self.teams:
+            if boi in team.bois:
+                team.bois.remove(boi)
+                break  # Assumes bois are unique to teams

@@ -20,5 +20,5 @@ class System(ABC):
     """Base class for all systems."""
 
     @abstractmethod
-    def process_event(self, event: Event):
-        """Process an event. Must be implemented by subclasses."""
+    def send_event(self, event: Event):
+        """Communicates an event to the system. Must be implemented by subclasses."""

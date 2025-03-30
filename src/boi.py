@@ -9,6 +9,8 @@ from copy import deepcopy
 
 from system import Event, System
 
+BoiCallback = Callable[["Boi", System, Event], None]
+
 
 class Boi:
     """
@@ -18,42 +20,63 @@ class Boi:
 
     def __init__(self) -> None:
         super().__init__()
-        self.system: System
-        self.team: int
-        self.team_pos: int
         self.type_name: str
         self.attack: int
-        self.max_attack: int
         self.health: int
-        self.max_health: int
-        self.triggers: Dict[str, List[Callable]] = {}
+        self.level: int = 1
+        self.experience: int = 0
+        self.triggers: Dict[str, List[BoiCallback]] = {}
         self.uuid: str = str(uuid.uuid4())
 
-    def __str__(self):
-        return f"{self.type_name} ({self.uuid}) - {self.attack}/{self.max_attack} - {self.health}/{self.max_health} - Team {self.team} - Pos {self.team_pos}"
-
     def __repr__(self):
-        return f"{self.type_name} ({self.uuid}) - {self.attack}/{self.max_attack} - {self.health}/{self.max_health} - Team {self.team} - Pos {self.team_pos}"
+        return f"{self.type_name} ({self.attack}/{self.health})"
 
-    def trigger(self, event: Event) -> None:
+    def trigger(self, event: Event, system: System) -> None:
         """
         Trigger a type for this Boi.
         """
         if event.type in self.triggers:
             for callback in self.triggers[event.type]:
-                callback(self)
+                callback(self, system, event)
 
     def _sort_tuple(self) -> tuple:
         """
         Returns a tuple of the Boi's stats for sorting.
         """
-        return (self.max_attack, self.max_health, self.uuid)
+        return (self.attack, self.health, self.uuid)
 
     def __lt__(self, other: "Boi") -> bool:
         """
         Compare bois based on their team position.
         """
         return self._sort_tuple() > other._sort_tuple()
+
+    def is_dead(self) -> bool:
+        """
+        Check if the Boi is dead.
+        """
+        return self.health <= 0
+
+
+def standard_damage_callback(boi: Boi, system: System, event: Event) -> None:
+    """
+    A standard damage callback for the Boi.
+    Most bois should have this callback.
+    """
+    boi.health -= event.data["damage"]
+    if boi.is_dead():
+        killer = event.data["source"]
+        system.send_event(Event(type="death", target=boi, source=killer))
+        system.send_event(Event(type="killed", target=killer, source=boi))
+
+
+def standard_levelup_callback(boi: Boi, system: System, event: Event) -> None:
+    """
+    A standard level up callback for the Boi.
+    Most bois should have this callback.
+    """
+    boi.level += 1
+    boi.experience = 0
 
 
 class BoiBuilder:
@@ -63,6 +86,8 @@ class BoiBuilder:
 
     def __init__(self) -> None:
         self.boi = Boi()
+        self.add_trigger("damage", standard_damage_callback)
+        self.add_trigger("levelup", standard_levelup_callback)
 
     def set_type_name(self, type_name: str) -> "BoiBuilder":
         """
@@ -76,7 +101,6 @@ class BoiBuilder:
         Set the attack value of the Boi.
         """
         self.boi.attack = attack
-        self.boi.max_attack = attack
         return self
 
     def set_health(self, health: int) -> "BoiBuilder":
@@ -84,7 +108,6 @@ class BoiBuilder:
         Set the health value of the Boi.
         """
         self.boi.health = health
-        self.boi.max_health = health
         return self
 
     def add_trigger(self, event_type: str, callback: Callable) -> "BoiBuilder":
@@ -100,4 +123,6 @@ class BoiBuilder:
         """
         Build and return the Boi instance.
         """
-        return deepcopy(self.boi)
+        copied_boi = deepcopy(self.boi)
+        copied_boi.uuid = str(uuid.uuid4())
+        return copied_boi
