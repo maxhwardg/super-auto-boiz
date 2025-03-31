@@ -3,11 +3,12 @@ This module defines the Boi class, which represents a Boi entity in the game.
 Also includes builder pattern for creating Boi instances.
 """
 
-from typing import Dict, Callable, List
+from typing import Dict, Callable, List, Optional
 import uuid
 from copy import deepcopy
 
 from system import Event, System
+from effect import Effect
 
 BoiCallback = Callable[["Boi", System, Event], None]
 
@@ -26,6 +27,7 @@ class Boi:
         self.level: int = 1
         self.experience: int = 0
         self.triggers: Dict[str, List[BoiCallback]] = {}
+        self.effect: Optional[Effect] = None
         self.uuid: str = str(uuid.uuid4())
 
     def __repr__(self):
@@ -38,6 +40,8 @@ class Boi:
         if event.type in self.triggers:
             for callback in self.triggers[event.type]:
                 callback(self, system, event)
+        if self.effect:
+            self.effect.trigger(event, system)
 
     def _sort_tuple(self) -> tuple:
         """
@@ -117,6 +121,14 @@ class BoiBuilder:
         if event_type not in self.boi.triggers:
             self.boi.triggers[event_type] = []
         self.boi.triggers[event_type].append(callback)
+        return self
+
+    def add_default_effect(self, effect: Effect) -> "BoiBuilder":
+        """
+        Add a default effect to the Boi.
+        This effect will be present when the Boi is created.
+        """
+        self.boi.effect = effect
         return self
 
     def build(self) -> Boi:
