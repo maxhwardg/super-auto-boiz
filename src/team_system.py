@@ -4,12 +4,11 @@ This is the base class for team-related systems in the game.
 These include the BattleSystem and the ShopSystem.
 """
 
-from typing import List, Optional, Deque
-from collections import deque
+from typing import List, Optional
 from abc import ABC, abstractmethod
 
 from boi import Boi
-from system import System, Event
+from system import System, Event, EventCallback
 from team import Team
 
 
@@ -23,10 +22,9 @@ class TeamSystem(System, ABC):
     This class includes these functionalities.
     """
 
-    def __init__(self, teams: List[Team]) -> None:
-        super().__init__()
+    def __init__(self, teams: List[Team], event_callbacks: List[EventCallback]) -> None:
+        super().__init__(event_callbacks)
         self.teams = teams
-        self.event_queue: Deque[Event] = deque()
 
     def send_event(self, event: Event) -> None:
         """
@@ -75,19 +73,6 @@ class TeamSystem(System, ABC):
         assert team_number is not None, "Boi not found in any team"
         return self.teams[1 - team_number]
 
-    def _process_all_queue_events(self) -> None:
-        """
-        Processes elements on the event queue until the queue is empty.
-        """
-        while self.event_queue:
-            self._process_queue_event(self.event_queue.popleft())
-
-    @abstractmethod
-    def _process_queue_event(self, event: Event) -> None:
-        """
-        Processes events in the queue.
-        """
-
     def _remove_boi(self, boi: Boi):
         """
         Removes the specified Boi from the battle.
@@ -96,3 +81,30 @@ class TeamSystem(System, ABC):
             if boi in team.bois:
                 team.bois.remove(boi)
                 break  # Assumes bois are unique to teams
+
+    def _process_queue_event(self, event: Event) -> None:
+        for callback in self.event_callbacks:
+            callback(event)
+        # If the event has a target make sure to notify them
+        if "target" in event.data:
+            self._handle_target_boi(event)
+        # Generally, the BattleSystem should just pass on events
+        # However, death is a special event type
+        # Since it leads to the removal of a Boi from their team
+        if event.type == "death":
+            self._handle_death(event)
+
+    def _handle_target_boi(self, event: Event) -> None:
+        """
+        Handle the targeting of a Boi in the battle with the given event.
+        """
+        target = event.data["target"]
+        assert isinstance(target, Boi)
+        target.trigger(event, self)
+
+    def _handle_death(self, event: Event) -> None:
+        """
+        Handle the death of a Boi in the battle with the given event.
+        """
+        # Assume target is already validated
+        self._remove_boi(event.data["target"])

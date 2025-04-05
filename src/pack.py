@@ -14,8 +14,9 @@ class Pack:
     This comprises bois and items.
     """
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, num_tiers: int) -> None:
         self.name = name
+        self.num_tiers = num_tiers
         self.tier_bois: Dict[int, List[Boi]] = {}
         self.tier_items: Dict[int, List[Item]] = {}
 
@@ -34,3 +35,13 @@ class Pack:
         if tier not in self.tier_items:
             self.tier_items[tier] = []
         self.tier_items[tier].append(item)
+
+    def validate_tiers(self) -> bool:
+        """
+        Validate that all tiers have at least one Boi and one Item.
+        This is to ensure that the pack is complete and can be used in the game.
+        """
+        for tier in range(1, self.num_tiers + 1):
+            if tier not in self.tier_bois or tier not in self.tier_items:
+                return False
+        return True

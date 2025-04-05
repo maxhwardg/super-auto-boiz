@@ -20,7 +20,7 @@ class BattleSystem(TeamSystem):
     ) -> None:
         if event_callbacks is None:
             event_callbacks = []
-        super().__init__([team0, team1])
+        super().__init__([team0, team1], event_callbacks)
         self.battle_over = False
         self.winner: Optional[int] = None
         self.event_callbacks = event_callbacks
@@ -79,18 +79,6 @@ class BattleSystem(TeamSystem):
         # Check if battle is over
         self._check_battle_over()
 
-    def _process_queue_event(self, event: Event) -> None:
-        for callback in self.event_callbacks:
-            callback(event)
-        # If the event has a target make sure to notify them
-        if "target" in event.data:
-            self._handle_target_boi(event)
-        # Generally, the BattleSystem should just pass on events
-        # However, death is a special event type
-        # Since it leads to the removal of a Boi from their team
-        if event.type == "death":
-            self._handle_death(event)
-
     def _check_battle_over(self) -> None:
         if len(self.teams[0].bois) == 0 and len(self.teams[1].bois) == 0:
             self.battle_over = True
@@ -101,21 +89,6 @@ class BattleSystem(TeamSystem):
         elif len(self.teams[1].bois) == 0:
             self.battle_over = True
             self.winner = 0
-
-    def _handle_target_boi(self, event: Event) -> None:
-        """
-        Handle the targeting of a Boi in the battle with the given event.
-        """
-        target = event.data["target"]
-        assert isinstance(target, Boi)
-        target.trigger(event, self)
-
-    def _handle_death(self, event: Event) -> None:
-        """
-        Handle the death of a Boi in the battle with the given event.
-        """
-        # Assume target is already validated
-        self._remove_boi(event.data["target"])
 
     def _start_battle(self) -> None:
         """
