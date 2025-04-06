@@ -12,6 +12,9 @@ from effect import Effect
 
 BoiCallback = Callable[["Boi", System, Event], None]
 
+MAX_BOI_LEVEL = 3
+LEVEL_UP_EXPERIENCE = 3
+
 
 class Boi:
     """
@@ -83,6 +86,14 @@ def standard_levelup_callback(boi: Boi, system: System, event: Event) -> None:
     boi.experience = 0
 
 
+def standard_item_callback(boi: Boi, system: System, event: Event) -> None:
+    """
+    A standard item callback for the Boi.
+    Most bois should have this callback.
+    """
+    boi.effect = event.data["item"].effect_builder.build()
+
+
 class BoiBuilder:
     """
     Builder for creating Boi instances.
@@ -92,6 +103,7 @@ class BoiBuilder:
         self.boi = Boi()
         self.add_trigger("damage", standard_damage_callback)
         self.add_trigger("levelup", standard_levelup_callback)
+        self.add_trigger("item_used", standard_item_callback)
 
     def set_type_name(self, type_name: str) -> "BoiBuilder":
         """
