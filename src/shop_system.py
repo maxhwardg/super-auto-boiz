@@ -4,7 +4,7 @@ import random
 from system import Event
 from team_system import TeamSystem
 from team import Team, MAX_TEAM_SIZE
-from boi import Boi, MAX_BOI_LEVEL, LEVEL_UP_EXPERIENCE
+from boi import Boi, MAX_BOI_LEVEL, LEVEL_UP_EXPERIENCE, MAX_ATTACK, MAX_HEALTH
 from item import Item
 from pack import Pack
 
@@ -61,6 +61,8 @@ class ShopSystem(TeamSystem):
                 self._sell_boi(event)
             case "merge_boi":
                 self._merge_boi(event)
+            case "buy_and_merge_boi":
+                self._buy_and_merge_boi(event)
             case "swap_boi":
                 self._swap_boi(event)
             case "roll":
@@ -273,9 +275,19 @@ class ShopSystem(TeamSystem):
         source_boi = cast(Boi, source_boi)
 
         # Merge the bois
+
+        # Update experience
         target_boi.experience += (
-            source_boi.experience + (source_boi.level - 1) * LEVEL_UP_EXPERIENCE
+            source_boi.experience + (source_boi.level - 1) * LEVEL_UP_EXPERIENCE + 1
         )
+
+        # Update stats
+        max_health = max(target_boi.health, source_boi.health)
+        max_attack = max(target_boi.attack, source_boi.attack)
+        target_boi.attack = min(MAX_ATTACK, max_attack + 1)
+        target_boi.health = min(MAX_HEALTH, max_health + 1)
+
+        # Handle level up(s)
         while (
             target_boi.experience >= LEVEL_UP_EXPERIENCE
             and target_boi.level < MAX_BOI_LEVEL
@@ -286,9 +298,56 @@ class ShopSystem(TeamSystem):
         if target_boi.level == MAX_BOI_LEVEL:
             target_boi.experience = 0
         assert target_boi.level <= MAX_BOI_LEVEL, "Boi level exceeded maximum"
+
         # Remove the source boi from the team
         team = self.get_team()
         team.bois.remove(source_boi)
+
+    def valid_buy_and_merge_boi(self, bought: Any, target: Any) -> bool:
+        """
+        Check if the boi can be bought and merged.
+        """
+
+        if not isinstance(bought, Boi):
+            raise ValueError("Invalid bought boi type")
+        if not isinstance(target, Boi):
+            raise ValueError("Invalid target boi type")
+
+        if bought not in self.shop_bois:
+            return False
+        if target not in self.get_team().bois:
+            return False
+        if bought.type_name != target.type_name:
+            return False
+        if self.money < BOI_PRICE:
+            return False
+        return True
+
+    def _buy_and_merge_boi(self, event: Event) -> None:
+        """
+        Process buying and merging a boi from the shop.
+
+        The event should have:
+        - 'bought': The Boi object to buy
+        - 'target': The Boi to merge into
+        """
+        bought = event.data.get("bought")
+        target = event.data.get("target")
+
+        if not self.valid_buy_and_merge_boi(bought, target):
+            raise ValueError("Invalid bois for buying and merging")
+
+        bought = cast(Boi, bought)
+        target = cast(Boi, target)
+
+        # Process the purchase
+        self.money -= BOI_PRICE
+        self.shop_bois.remove(bought)
+
+        self.teams[0].bois.append(bought)
+
+        # Merge the bois
+        self._merge_boi(Event(type="merge_boi", target_boi=target, source_boi=bought))
 
     def valid_swap_boi(self, boi1: Any, boi2: Any) -> bool:
         """

@@ -14,6 +14,8 @@ BoiCallback = Callable[["Boi", System, Event], None]
 
 MAX_BOI_LEVEL = 3
 LEVEL_UP_EXPERIENCE = 3
+MAX_HEALTH = 50
+MAX_ATTACK = 50
 
 
 class Boi:
