@@ -34,8 +34,8 @@ class ShopSystem(TeamSystem):
         self.shop_bois: List[Boi] = []
         self.shop_items: List[Item] = []
 
-        if not self.validate_tiers():
-            raise ValueError("Invalid tiers in the pack")
+        if tier < 1 or tier > pack.num_tiers:
+            raise ValueError("Invalid tier")
 
         # Initially populate the shop
         self._free_roll()
@@ -70,21 +70,6 @@ class ShopSystem(TeamSystem):
             case _:
                 pass
 
-    def validate_tiers(self) -> bool:
-        """
-        Check all tiers up to the current tier are valid.
-        """
-        for tier in range(1, self.tier + 1):
-            if tier not in self.pack.tier_boi_builders:
-                return False
-            if tier not in self.pack.tier_items:
-                return False
-            if tier not in self.pack.tier_shop_num_bois:
-                return False
-            if tier not in self.pack.tier_shop_num_items:
-                return False
-        return True
-
     def valid_roll(self) -> bool:
         """
         Check if the current tier is valid for rolling.
@@ -105,8 +90,8 @@ class ShopSystem(TeamSystem):
         # Generate new bois for the shop
         boi_builders = []
         for tier in range(1, self.tier + 1):
-            boi_builders.extend(self.pack.tier_boi_builders[tier])
-        num_bois = self.pack.tier_shop_num_bois[self.tier]
+            boi_builders.extend(self.pack.tiers[tier - 1].boi_builders)
+        num_bois = self.pack.tiers[self.tier - 1].shop_num_bois
         for _ in range(min(num_bois, len(boi_builders))):
             boi_template = random.choice(boi_builders)
             self.shop_bois.append(boi_template.build())
@@ -114,8 +99,8 @@ class ShopSystem(TeamSystem):
         # Generate new items for the shop
         available_items = []
         for tier in range(1, self.tier + 1):
-            available_items.extend(self.pack.tier_items[tier])
-        num_items = self.pack.tier_shop_num_items[self.tier]
+            available_items.extend(self.pack.tiers[tier - 1].items)
+        num_items = self.pack.tiers[self.tier - 1].shop_num_items
         for _ in range(min(num_items, len(available_items))):
             self.shop_items.append(random.choice(available_items))
 
