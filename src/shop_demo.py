@@ -27,6 +27,11 @@ def print_event(event):
             print(
                 f"{event.data['target'].type_name} leveled up to level {event.data['target'].level}!"
             )
+    elif event.type == "buy_and_merge_boi":
+        if "bought" in event.data and "target" in event.data:
+            print(
+                f"Buying {event.data['bought'].type_name} and merging into {event.data['target'].type_name}"
+            )
 
 
 # Create pet builders and effects
@@ -202,10 +207,11 @@ def print_menu():
     print("  2. Buy item")
     print("  3. Sell boi")
     print("  4. Merge bois (level up)")
-    print("  5. Swap boi positions")
-    print("  6. Roll shop")
-    print("  7. End turn (exit)")
-    print("  8. Help")
+    print("  5. Buy and merge boi")
+    print("  6. Swap boi positions")
+    print("  7. Roll shop")
+    print("  8. End turn")
+    print("  9. Help")
 
 
 def handle_buy_boi(shop):
@@ -413,6 +419,92 @@ def handle_roll(shop):
     print("Successfully rolled the shop!")
 
 
+def handle_buy_and_merge_boi(shop):
+    """Handle buying a boi from the shop and merging it with a boi on the team."""
+    print_shop(shop)
+    print_team(shop.get_team())
+
+    if not shop.shop_bois:
+        print("No bois available in the shop!")
+        return
+
+    if not shop.get_team().bois:
+        print("You need bois on your team to merge with!")
+        return
+
+    if shop.money < 3:
+        print("Not enough money to buy a boi! (Costs $3)")
+        return
+
+    try:
+        shop_choice = int(
+            input("\nEnter shop boi number to buy for merging (0 to cancel): ")
+        )
+        if shop_choice == 0:
+            return
+
+        if shop_choice < 1 or shop_choice > len(shop.shop_bois):
+            print("Invalid choice!")
+            return
+
+        shop_boi = shop.shop_bois[shop_choice - 1]
+
+        # Find compatible bois on the team
+        compatible_bois = [
+            (i + 1, boi)
+            for i, boi in enumerate(shop.get_team().bois)
+            if boi.type_name == shop_boi.type_name
+        ]
+
+        if not compatible_bois:
+            print(f"No compatible {shop_boi.type_name} on your team to merge with!")
+            return
+
+        print(f"\nTeam bois compatible with {shop_boi.type_name}:")
+        for idx, boi in compatible_bois:
+            print(f"  {idx}. {boi} (Level {boi.level}, XP {boi.experience})")
+
+        target_choice = int(input("Enter team boi number to merge into: "))
+        if not any(idx == target_choice for idx, _ in compatible_bois):
+            print("Invalid target choice!")
+            return
+
+        target_boi = shop.get_team().bois[target_choice - 1]
+
+        shop.send_event(
+            Event(type="buy_and_merge_boi", bought=shop_boi, target=target_boi)
+        )
+        shop._process_all_queue_events()
+        print(
+            f"Successfully bought {shop_boi.type_name} and merged into {target_boi.type_name}!"
+        )
+
+    except ValueError:
+        print("Please enter a valid number.")
+
+
+def handle_end_turn(shop):
+    """Handle ending the current turn and starting a new one."""
+    # Get the current team
+    existing_team = shop.get_team()
+
+    # Create a new shop with the same pack and tier but fresh money
+    new_pack = create_pack()  # Using the same pack creation function
+    starting_money = 10
+
+    # Create a new shop system with the existing team
+    new_shop = ShopSystem(
+        existing_team, new_pack, shop.tier, starting_money, [print_event]
+    )
+
+    print(f"\n--- END OF TURN ---")
+    print(f"Starting new turn with ${starting_money}!")
+    print(f"The shop has been refreshed.")
+
+    # Return the new shop system to replace the old one
+    return new_shop
+
+
 def display_help():
     """Display help information."""
     print("\n=== SHOP SYSTEM HELP ===")
@@ -420,9 +512,15 @@ def display_help():
     print("2. Buy Item (varies): Buy an item and apply it to one of your bois.")
     print("3. Sell Boi (earn level in $): Sell a boi from your team to earn money.")
     print("4. Merge Bois: Combine two bois of the same type to increase level/XP.")
-    print("5. Swap Boi Positions: Change the order of your bois in the team.")
-    print("6. Roll Shop ($1): Refresh the shop offerings.")
-    print("7. End Turn: Exit the game.")
+    print(
+        "5. Buy and Merge Boi ($3): Buy a boi from shop and immediately merge with same type on team."
+    )
+    print("6. Swap Boi Positions: Change the order of your bois in the team.")
+    print("7. Roll Shop ($1): Refresh the shop offerings.")
+    print(
+        "8. End Turn: End current turn and start a new one with refreshed shop and money."
+    )
+    print("9. Help: Show this help information.")
     print("\nTeam Size: Maximum of 5 bois on your team.")
     print("Boi Levels: Bois can be merged to level up (max level 3).")
     print("Money: Used to buy bois, items, and roll the shop.")
@@ -463,13 +561,14 @@ def main():
         elif choice == "4":
             handle_merge_boi(shop)
         elif choice == "5":
-            handle_swap_boi(shop)
+            handle_buy_and_merge_boi(shop)
         elif choice == "6":
-            handle_roll(shop)
+            handle_swap_boi(shop)
         elif choice == "7":
-            print("\nThanks for playing the Shop Demo!")
-            break
+            handle_roll(shop)
         elif choice == "8":
+            shop = handle_end_turn(shop)
+        elif choice == "9":
             display_help()
         else:
             print("Invalid choice. Please try again.")

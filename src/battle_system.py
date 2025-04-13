@@ -23,7 +23,6 @@ class BattleSystem(TeamSystem):
         super().__init__([team0, team1], event_callbacks)
         self.battle_over = False
         self.winner: Optional[int] = None
-        self.event_callbacks = event_callbacks
         self._start_battle()
 
     def is_battle_over(self) -> bool:

@@ -23,7 +23,8 @@ class TeamSystem(System, ABC):
     """
 
     def __init__(self, teams: List[Team], event_callbacks: List[EventCallback]) -> None:
-        super().__init__(event_callbacks)
+        super().__init__()
+        self.event_callbacks = event_callbacks
         self.teams = teams
 
     def send_event(self, event: Event) -> None:
@@ -82,9 +83,13 @@ class TeamSystem(System, ABC):
                 team.bois.remove(boi)
                 break  # Assumes bois are unique to teams
 
-    def _process_queue_event(self, event: Event) -> None:
+    def _notify_callbacks(self, event: Event):
+        """Notify all registered callbacks of the event."""
         for callback in self.event_callbacks:
             callback(event)
+
+    def _process_queue_event(self, event: Event) -> None:
+        self._notify_callbacks(event)
         # If the event has a target make sure to notify them
         if "target" in event.data:
             self._handle_target_boi(event)

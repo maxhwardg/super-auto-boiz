@@ -28,18 +28,17 @@ class System(ABC):
     All systems have a queue of events to process.
     """
 
-    def __init__(self, event_callbacks: List[EventCallback]) -> None:
-        self.event_callbacks = event_callbacks
+    def __init__(self) -> None:
         self.event_queue: Deque[Event] = deque()
 
     def send_event(self, event: Event):
         """Communicates an event to the system. Must be implemented by subclasses."""
         self.event_queue.append(event)
 
-    def _notify_callbacks(self, event: Event):
-        """Notify all registered callbacks of the event."""
-        for callback in self.event_callbacks:
-            callback(event)
+    def send_and_execute_event(self, event: Event):
+        """Sends an event and executes it immediately."""
+        self.send_event(event)
+        self._process_all_queue_events()
 
     def _process_all_queue_events(self) -> None:
         """

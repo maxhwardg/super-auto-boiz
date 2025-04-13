@@ -84,8 +84,7 @@ def standard_levelup_callback(boi: Boi, system: System, event: Event) -> None:
     A standard level up callback for the Boi.
     Most bois should have this callback.
     """
-    boi.level += 1
-    boi.experience = 0
+    pass
 
 
 def standard_item_callback(boi: Boi, system: System, event: Event) -> None:
