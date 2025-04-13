@@ -37,7 +37,7 @@ from ui_components import (
 
 # Constants
 SCREEN_WIDTH = 1280  # Increased from 1024 to 1280 to provide more horizontal space
-SCREEN_HEIGHT = 868  # Increased from 768 to 868 to provide more vertical space
+SCREEN_HEIGHT = 950  # Increased from 868 to 950 to provide more vertical space for additional buttons
 FPS = 60  # Added FPS constant for controlling frame rate
 
 # Card dimensions
@@ -49,6 +49,8 @@ BUTTON_WIDTH = 120
 BUTTON_HEIGHT = 40
 PADDING = 10
 RED = (255, 70, 70)  # Adding RED color constant for cancel button
+CYAN = (0, 200, 200)  # Adding CYAN color constant for frozen items/bois
+ICE_BLUE = (150, 200, 255)  # Ice blue for frozen items/bois background
 
 
 class ShopUI:
@@ -135,6 +137,8 @@ class ShopUI:
         for i, boi in enumerate(self.shop.shop_bois):
             x = 20 + i * (BOI_CARD_WIDTH + PADDING)
             y = 300
+            # Check if the boi is frozen
+            is_frozen = boi in self.shop.frozen_bois
             card = BoiCard(
                 x,
                 y,
@@ -143,6 +147,7 @@ class ShopUI:
                 boi,
                 self._on_shop_boi_click,
                 BLUE,
+                is_frozen,
             )
             self.shop_boi_cards.append(card)
 
@@ -151,6 +156,8 @@ class ShopUI:
         for i, item in enumerate(self.shop.shop_items):
             x = 20 + i * (ITEM_CARD_WIDTH + PADDING)
             y = 500
+            # Check if the item is frozen
+            is_frozen = item in self.shop.frozen_items
             card = ItemCard(
                 x,
                 y,
@@ -159,26 +166,23 @@ class ShopUI:
                 item,
                 self._on_item_click,
                 GREEN,
+                is_frozen,
             )
             self.shop_item_cards.append(card)
 
     def _create_buttons(self) -> Dict[str, Button]:
         """Create action buttons"""
         buttons = {}
-        # Position buttons above the info panel
-        y_position = SCREEN_HEIGHT - 220
 
-        # Ensure buttons are visible and don't overlap with shop items or info panel
-        if y_position < 650:
-            y_position = 650  # Ensure buttons are below shop items
+        # Create two rows of buttons
+        row1_y = SCREEN_HEIGHT - 260  # First row of buttons
+        row2_y = SCREEN_HEIGHT - 210  # Second row of buttons
 
-        # Calculate widths for special buttons
-        buy_merge_width = BUTTON_WIDTH + 20
-
+        # First row buttons
         # Buy boi button
         buy_boi_button = Button(
             20,
-            y_position,
+            row1_y,
             BUTTON_WIDTH,
             BUTTON_HEIGHT,
             "Buy Boi",
@@ -190,7 +194,7 @@ class ShopUI:
         # Buy item button
         buy_item_button = Button(
             20 + BUTTON_WIDTH + PADDING,
-            y_position,
+            row1_y,
             BUTTON_WIDTH,
             BUTTON_HEIGHT,
             "Buy Item",
@@ -202,7 +206,7 @@ class ShopUI:
         # Sell boi button
         sell_boi_button = Button(
             20 + (BUTTON_WIDTH + PADDING) * 2,
-            y_position,
+            row1_y,
             BUTTON_WIDTH,
             BUTTON_HEIGHT,
             "Sell Boi",
@@ -211,22 +215,34 @@ class ShopUI:
         )
         buttons["sell_boi"] = sell_boi_button
 
-        # Merge bois button
-        merge_boi_button = Button(
+        # Freeze boi button
+        freeze_boi_button = Button(
             20 + (BUTTON_WIDTH + PADDING) * 3,
-            y_position,
+            row1_y,
             BUTTON_WIDTH,
             BUTTON_HEIGHT,
-            "Merge Bois",
-            self._on_merge_boi_click,
-            YELLOW,
+            "Freeze Boi",
+            self._on_freeze_boi_click,
+            ICE_BLUE,
         )
-        buttons["merge_boi"] = merge_boi_button
+        buttons["freeze_boi"] = freeze_boi_button
+
+        # Freeze item button
+        freeze_item_button = Button(
+            20 + (BUTTON_WIDTH + PADDING) * 4,
+            row1_y,
+            BUTTON_WIDTH,
+            BUTTON_HEIGHT,
+            "Freeze Item",
+            self._on_freeze_item_click,
+            ICE_BLUE,
+        )
+        buttons["freeze_item"] = freeze_item_button
 
         # Roll shop button
         roll_button = Button(
-            20 + (BUTTON_WIDTH + PADDING) * 4,
-            y_position,
+            20 + (BUTTON_WIDTH + PADDING) * 5,
+            row1_y,
             BUTTON_WIDTH,
             BUTTON_HEIGHT,
             "Roll Shop ($1)",
@@ -237,8 +253,8 @@ class ShopUI:
 
         # End turn button
         end_turn_button = Button(
-            20 + (BUTTON_WIDTH + PADDING) * 5,
-            y_position,
+            20 + (BUTTON_WIDTH + PADDING) * 6,
+            row1_y,
             BUTTON_WIDTH,
             BUTTON_HEIGHT,
             "End Turn",
@@ -247,10 +263,23 @@ class ShopUI:
         )
         buttons["end_turn"] = end_turn_button
 
+        # Second row buttons
+        # Merge bois button
+        merge_boi_button = Button(
+            20,
+            row2_y,
+            BUTTON_WIDTH,
+            BUTTON_HEIGHT,
+            "Merge Bois",
+            self._on_merge_boi_click,
+            YELLOW,
+        )
+        buttons["merge_boi"] = merge_boi_button
+
         # Swap bois button
         swap_button = Button(
-            20 + (BUTTON_WIDTH + PADDING) * 6,
-            y_position,
+            20 + (BUTTON_WIDTH + PADDING),
+            row2_y,
             BUTTON_WIDTH,
             BUTTON_HEIGHT,
             "Swap Bois",
@@ -260,9 +289,10 @@ class ShopUI:
         buttons["swap"] = swap_button
 
         # Add Buy & Merge button
+        buy_merge_width = BUTTON_WIDTH + 20
         buy_merge_button = Button(
-            20 + (BUTTON_WIDTH + PADDING) * 7,
-            y_position,
+            20 + (BUTTON_WIDTH + PADDING) * 2,
+            row2_y,
             buy_merge_width,
             BUTTON_HEIGHT,
             "Buy & Merge",
@@ -271,10 +301,10 @@ class ShopUI:
         )
         buttons["buy_merge"] = buy_merge_button
 
-        # Add Cancel button - adjust position to account for Buy & Merge's wider width
+        # Add Cancel button
         cancel_button = Button(
-            20 + (BUTTON_WIDTH + PADDING) * 7 + buy_merge_width + PADDING,
-            y_position,
+            20 + (BUTTON_WIDTH + PADDING) * 2 + buy_merge_width + PADDING,
+            row2_y,
             BUTTON_WIDTH,
             BUTTON_HEIGHT,
             "Cancel",
@@ -287,6 +317,11 @@ class ShopUI:
 
     def _on_shop_boi_click(self, card: BoiCard):
         """Handle click on shop boi card"""
+        # Check if we're in freeze boi mode
+        if self.action_mode == "freeze_boi":
+            self._toggle_freeze_boi(card.boi)
+            return
+
         # Only allow shop boi selection if we're in an action that requires it
         if self.action_mode not in ["buy", "buy_and_merge"]:
             self.info_panel.add_message("Please select an action first.")
@@ -343,6 +378,11 @@ class ShopUI:
 
     def _on_item_click(self, card: ItemCard):
         """Handle click on item card"""
+        # Check if we're in freeze item mode
+        if self.action_mode == "freeze_item":
+            self._toggle_freeze_item(card.item)
+            return
+
         # Items can only be selected during buy_item action
         if self.action_mode != "buy_item":
             self.info_panel.add_message("Please select the Buy Item action first.")
@@ -451,6 +491,24 @@ class ShopUI:
         """Handle cancel button click"""
         self.action_mode = None
         self.info_panel.add_message("Action cancelled.")
+        self._deselect_all()
+
+    def _on_freeze_boi_click(self):
+        """Handle freeze boi button click"""
+        self.action_mode = "freeze_boi"
+        self.info_panel.add_message("Select a boi from the shop to freeze or unfreeze.")
+
+        # Deselect everything
+        self._deselect_all()
+
+    def _on_freeze_item_click(self):
+        """Handle freeze item button click"""
+        self.action_mode = "freeze_item"
+        self.info_panel.add_message(
+            "Select an item from the shop to freeze or unfreeze."
+        )
+
+        # Deselect everything
         self._deselect_all()
 
     def _handle_event(self, event: Event):
@@ -655,6 +713,30 @@ class ShopUI:
             self.update_cards()
             self._deselect_all()
             self.status_display.update_values(self.shop.money, self.turn)
+            self.action_mode = None
+        except ValueError as e:
+            self.info_panel.add_message(str(e))
+
+    def _toggle_freeze_boi(self, boi):
+        """Toggle freeze state for a shop boi"""
+        try:
+            self.shop.send_event(Event(type="toggle_freeze_boi", boi=boi))
+            self.shop._process_all_queue_events()
+            frozen_status = "frozen" if boi in self.shop.frozen_bois else "unfrozen"
+            self.info_panel.add_message(f"{boi.type_name} {frozen_status}!")
+            self.update_cards()
+            self.action_mode = None
+        except ValueError as e:
+            self.info_panel.add_message(str(e))
+
+    def _toggle_freeze_item(self, item):
+        """Toggle freeze state for a shop item"""
+        try:
+            self.shop.send_event(Event(type="toggle_freeze_item", item=item))
+            self.shop._process_all_queue_events()
+            frozen_status = "frozen" if item in self.shop.frozen_items else "unfrozen"
+            self.info_panel.add_message(f"{item.name} {frozen_status}!")
+            self.update_cards()
             self.action_mode = None
         except ValueError as e:
             self.info_panel.add_message(str(e))

@@ -33,6 +33,8 @@ class ShopSystem(TeamSystem):
         self.money = money
         self.shop_bois: List[Boi] = []
         self.shop_items: List[Item] = []
+        self.frozen_bois: List[Boi] = []
+        self.frozen_items: List[Item] = []
 
         if tier < 1 or tier > pack.num_tiers:
             raise ValueError("Invalid tier")
@@ -67,6 +69,10 @@ class ShopSystem(TeamSystem):
                 self._swap_boi(event)
             case "roll":
                 self._roll()
+            case "toggle_freeze_item":
+                self._toggle_freeze_item(event)
+            case "toggle_freeze_boi":
+                self._toggle_freeze_boi(event)
             case _:
                 pass
 
@@ -86,6 +92,10 @@ class ShopSystem(TeamSystem):
         # Clear current shop offerings
         self.shop_bois = []
         self.shop_items = []
+
+        # Add frozen items and bois to the shop
+        self.shop_bois.extend(self.frozen_bois)
+        self.shop_items.extend(self.frozen_items)
 
         # Generate new bois for the shop
         boi_builders = []
@@ -369,3 +379,61 @@ class ShopSystem(TeamSystem):
         idx1 = team.bois.index(boi1)
         idx2 = team.bois.index(boi2)
         team.bois[idx1], team.bois[idx2] = team.bois[idx2], team.bois[idx1]
+
+    def valid_toggle_freeze_item(self, item: Any) -> bool:
+        """
+        Check if the item can be toggled for freezing.
+        """
+
+        if not isinstance(item, Item):
+            raise ValueError("Invalid item type")
+
+        return item in self.shop_items or item in self.frozen_items
+
+    def _toggle_freeze_item(self, event: Event) -> None:
+        """
+        Toggle the frozen state of an item.
+        The event should have:
+        - 'item': The Item object to toggle
+        """
+        item = event.data.get("item")
+
+        if not self.valid_toggle_freeze_item(item):
+            raise ValueError("Invalid item for freezing/unfreezing")
+
+        item = cast(Item, item)
+
+        # Toggle the frozen state
+        if item in self.frozen_items:
+            self.frozen_items.remove(item)
+        else:
+            self.frozen_items.append(item)
+
+    def valid_toggle_freeze_boi(self, boi: Any) -> bool:
+        """
+        Check if the boi can be toggled for freezing.
+        """
+
+        if not isinstance(boi, Boi):
+            raise ValueError("Invalid boi type")
+
+        return boi in self.shop_bois or boi in self.frozen_bois
+
+    def _toggle_freeze_boi(self, event: Event) -> None:
+        """
+        Toggle the frozen state of a boi.
+        The event should have:
+        - 'boi': The Boi object to toggle
+        """
+        boi = event.data.get("boi")
+
+        if not self.valid_toggle_freeze_boi(boi):
+            raise ValueError("Invalid boi for freezing/unfreezing")
+
+        boi = cast(Boi, boi)
+
+        # Toggle the frozen state
+        if boi in self.frozen_bois:
+            self.frozen_bois.remove(boi)
+        else:
+            self.frozen_bois.append(boi)

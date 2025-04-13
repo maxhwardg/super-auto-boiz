@@ -80,7 +80,80 @@ class Button:
         surface.blit(text_surface, text_rect)
 
 
-class BoiCard:
+class Card:
+    """Base class for cards in the UI"""
+
+    def __init__(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        on_click: Optional[Callable] = None,
+        bg_color: Tuple[int, int, int] = BLUE,
+        is_frozen: bool = False,
+    ):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.on_click = on_click
+        self.bg_color = bg_color
+        self.is_selected = False
+        self.is_hovering = False
+        self.is_frozen = is_frozen
+        self.frozen_border_color = (50, 150, 250)  # Icy blue border color
+        self.frozen_border_width = 4  # Thickness of the frozen border
+
+    def draw(self, surface: pygame.Surface) -> None:
+        """Draw the card on the screen"""
+        # Draw card background
+        pygame.draw.rect(
+            surface,
+            self.bg_color,
+            (self.x, self.y, self.width, self.height),
+            0,
+            10,
+        )
+
+        # Draw a second border if frozen
+        if self.is_frozen:
+            pygame.draw.rect(
+                surface,
+                self.frozen_border_color,
+                (self.x, self.y, self.width, self.height),
+                self.frozen_border_width,
+                10,
+            )
+            # Draw ice crystals in corners
+            for corner in [
+                (self.x + 7, self.y + 7),
+                (self.x + self.width - 7, self.y + 7),
+                (self.x + 7, self.y + self.height - 7),
+                (self.x + self.width - 7, self.y + self.height - 7),
+            ]:
+                pygame.draw.circle(surface, (255, 255, 255), corner, 4)
+
+        # Draw selection border
+        if self.is_selected:
+            pygame.draw.rect(
+                surface,
+                YELLOW,
+                (self.x - 2, self.y - 2, self.width + 4, self.height + 4),
+                2,
+                12,
+            )
+        elif self.is_hovering:
+            pygame.draw.rect(
+                surface,
+                LIGHT_GRAY,
+                (self.x - 2, self.y - 2, self.width + 4, self.height + 4),
+                2,
+                12,
+            )
+
+
+class BoiCard(Card):
     """Card representing a Boi character"""
 
     def __init__(
@@ -92,51 +165,27 @@ class BoiCard:
         boi: Any,
         callback: Callable,
         color: Tuple[int, int, int] = LIGHT_GRAY,
+        is_frozen: bool = False,
     ):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
+        super().__init__(x, y, width, height, callback, color, is_frozen)
         self.boi = boi
-        self.callback = callback
-        self.color = color
-        self.hover_color = self._lighten_color(color)
-        self.selected_color = YELLOW
-        self.is_selected = False
-        self.hover = False
         self.font = pygame.font.SysFont("Arial", 14)
         self.title_font = pygame.font.SysFont("Arial", 16, bold=True)
         self.rect = pygame.Rect(x, y, width, height)
-
-    def _lighten_color(self, color: Tuple[int, int, int]) -> Tuple[int, int, int]:
-        """Create a lighter version of the given color for hover effects"""
-        return tuple(min(c + 50, 255) for c in color)
 
     def handle_event(self, event):
         """Handle mouse events on the card"""
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.rect.collidepoint(event.pos):
-                self.callback(self)
+                self.on_click(self)
 
     def update(self, mouse_pos):
         """Update card state based on mouse position"""
-        self.hover = self.rect.collidepoint(mouse_pos)
+        self.is_hovering = self.rect.collidepoint(mouse_pos)
 
     def draw(self, surface):
         """Draw the card on the given surface"""
-        # Determine card color based on state
-        if self.is_selected:
-            card_color = self.selected_color
-        elif self.hover:
-            card_color = self.hover_color
-        else:
-            card_color = self.color
-
-        # Draw card background
-        pygame.draw.rect(surface, card_color, self.rect, border_radius=10)
-
-        # Draw card border
-        pygame.draw.rect(surface, BLACK, self.rect, width=2, border_radius=10)
+        super().draw(surface)
 
         # Draw boi name
         name_surface = self.title_font.render(self.boi.type_name, True, BLACK)
@@ -186,7 +235,7 @@ class BoiCard:
         pygame.draw.circle(surface, BLACK, (center_x, center_y), radius, width=2)
 
 
-class ItemCard:
+class ItemCard(Card):
     """Card representing an Item"""
 
     def __init__(
@@ -198,51 +247,27 @@ class ItemCard:
         item: Any,
         callback: Callable,
         color: Tuple[int, int, int] = LIGHT_GRAY,
+        is_frozen: bool = False,
     ):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
+        super().__init__(x, y, width, height, callback, color, is_frozen)
         self.item = item
-        self.callback = callback
-        self.color = color
-        self.hover_color = self._lighten_color(color)
-        self.selected_color = YELLOW
-        self.is_selected = False
-        self.hover = False
         self.font = pygame.font.SysFont("Arial", 14)
         self.title_font = pygame.font.SysFont("Arial", 16, bold=True)
         self.rect = pygame.Rect(x, y, width, height)
-
-    def _lighten_color(self, color: Tuple[int, int, int]) -> Tuple[int, int, int]:
-        """Create a lighter version of the given color for hover effects"""
-        return tuple(min(c + 50, 255) for c in color)
 
     def handle_event(self, event):
         """Handle mouse events on the card"""
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.rect.collidepoint(event.pos):
-                self.callback(self)
+                self.on_click(self)
 
     def update(self, mouse_pos):
         """Update card state based on mouse position"""
-        self.hover = self.rect.collidepoint(mouse_pos)
+        self.is_hovering = self.rect.collidepoint(mouse_pos)
 
     def draw(self, surface):
         """Draw the card on the given surface"""
-        # Determine card color based on state
-        if self.is_selected:
-            card_color = self.selected_color
-        elif self.hover:
-            card_color = self.hover_color
-        else:
-            card_color = self.color
-
-        # Draw card background
-        pygame.draw.rect(surface, card_color, self.rect, border_radius=10)
-
-        # Draw card border
-        pygame.draw.rect(surface, BLACK, self.rect, width=2, border_radius=10)
+        super().draw(surface)
 
         # Draw item name
         name_surface = self.title_font.render(self.item.name, True, BLACK)
