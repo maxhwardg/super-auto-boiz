@@ -13,7 +13,7 @@ from team import Team
 from shop_system import ShopSystem
 from system import Event
 from pack import Pack
-from item import Item
+from item import ItemBuilder
 from effect import EffectBuilder
 
 # Import UI components
@@ -765,63 +765,70 @@ class ShopUI:
         # Create items
 
         # Apple - gives +1/+1
-        apple = Item(
-            "Apple",
-            3,
-            EffectBuilder()
-            .set_name("Apple Effect")
-            .add_trigger(
-                "item_used",
-                lambda effect, system, event: (
-                    setattr(
-                        event.data["target"], "attack", event.data["target"].attack + 1
-                    ),
-                    setattr(
-                        event.data["target"], "health", event.data["target"].health + 1
-                    ),
-                ),
-            ),
+        def apple_effect_callback(effect, system, event):
+            target = event.data["target"]
+            target.attack += 1
+            target.health += 1
+
+        apple_builder = (
+            ItemBuilder()
+            .set_name("Apple")
+            .set_price(3)
+            .set_effect_builder(
+                EffectBuilder()
+                .set_name("Apple Effect")
+                .add_trigger(
+                    "item_used",
+                    apple_effect_callback,
+                )
+            )
         )
 
+        def meat_effect_callback(effect, system, event):
+            target = event.data["target"]
+            target.attack += 2
+            # Meat does not affect health, only attack
+
         # Meat - gives +2/+0
-        meat = Item(
-            "Meat",
-            3,
-            EffectBuilder()
-            .set_name("Meat Effect")
-            .add_trigger(
-                "item_used",
-                lambda effect, system, event: (
-                    setattr(
-                        event.data["target"], "attack", event.data["target"].attack + 2
-                    ),
-                    setattr(
-                        event.data["target"], "health", event.data["target"].health + 0
-                    ),
-                ),
-            ),
+        meat_builder = (
+            ItemBuilder()
+            .set_name("Meat")
+            .set_price(3)
+            .set_effect_builder(
+                EffectBuilder()
+                .set_name("Meat Effect")
+                .add_trigger(
+                    "item_used",
+                    meat_effect_callback,
+                )
+            )
         )
 
         # Pill - triggers faint effects
-        pill = Item(
-            "Pill",
-            1,
-            EffectBuilder()
-            .set_name("Pill Effect")
-            .add_trigger(
-                "item_used",
-                lambda effect, system, event: (
-                    system.send_event(
-                        Event(type="death", target=event.data["target"], source=None)
-                    )
-                ),
-            ),
+        pill_builder = (
+            ItemBuilder()
+            .set_name("Pill")
+            .set_price(1)
+            .set_effect_builder(
+                EffectBuilder()
+                .set_name("Pill Effect")
+                .add_trigger(
+                    "item_used",
+                    lambda effect, system, event: (
+                        system.send_event(
+                            Event(
+                                type="death", target=event.data["target"], source=None
+                            )
+                        )
+                    ),
+                )
+            )
         )
 
         # Add items to tier 1
-        pack.add_item(apple, 1)
-        pack.add_item(meat, 1)
-        pack.add_item(pill, 1)
+        pack.add_item_builder(apple_builder, 1)
+        pack.add_item_builder(meat_builder, 1)
+        pack.add_item_builder(pill_builder, 1)
 
         # Set shop values
         pack.set_shop_tier_num_bois(1, 3)  # 3 bois in shop

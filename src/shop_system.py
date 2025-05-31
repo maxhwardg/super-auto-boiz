@@ -109,10 +109,10 @@ class ShopSystem(TeamSystem):
         # Generate new items for the shop
         available_items = []
         for tier in range(1, self.tier + 1):
-            available_items.extend(self.pack.tiers[tier - 1].items)
+            available_items.extend(self.pack.tiers[tier - 1].item_builders)
         num_items = self.pack.tiers[self.tier - 1].shop_num_items
         for _ in range(min(num_items, len(available_items))):
-            self.shop_items.append(random.choice(available_items))
+            self.shop_items.append(random.choice(available_items).build())
 
     def _roll(self) -> None:
         """

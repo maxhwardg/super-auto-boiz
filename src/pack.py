@@ -5,7 +5,7 @@ Module for Pack class.
 from typing import List
 
 from boi import BoiBuilder
-from item import Item
+from item import ItemBuilder
 
 
 class TierInfo:
@@ -15,7 +15,7 @@ class TierInfo:
 
     def __init__(self) -> None:
         self.boi_builders: List[BoiBuilder] = []
-        self.items: List[Item] = []
+        self.item_builders: List[ItemBuilder] = []
         self.shop_num_bois: int = 0
         self.shop_num_items: int = 0
 
@@ -45,13 +45,13 @@ class Pack:
             raise ValueError(f"Invalid tier: {tier}.")
         self.tiers[tier - 1].boi_builders.append(boi_builder)
 
-    def add_item(self, item: Item, tier: int) -> None:
+    def add_item_builder(self, item_builder: ItemBuilder, tier: int) -> None:
         """
         Add an Item to the pack.
         """
         if not self._validate_tier(tier):
             raise ValueError(f"Invalid tier: {tier}.")
-        self.tiers[tier - 1].items.append(item)
+        self.tiers[tier - 1].item_builders.append(item_builder)
 
     def set_shop_tier_num_bois(self, tier: int, num_bois: int) -> None:
         """
