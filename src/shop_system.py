@@ -34,8 +34,8 @@ class ShopSystem(TeamSystem):
         self.shop_items: List[Item] = []
         self.frozen_bois: List[Boi] = []
         self.frozen_items: List[Item] = []
-        self._roll_price = roll_price
-        self._boi_price = boi_price
+        self.roll_price = roll_price
+        self.boi_price = boi_price
 
         if tier < 1 or tier > pack.num_tiers:
             raise ValueError("Invalid tier")
@@ -81,7 +81,7 @@ class ShopSystem(TeamSystem):
         """
         Check if the current tier is valid for rolling.
         """
-        return self.money >= self._roll_price
+        return self.money >= self.roll_price
 
     def _free_roll(self) -> None:
         """
@@ -94,16 +94,24 @@ class ShopSystem(TeamSystem):
         self.shop_bois = []
         self.shop_items = []
 
+        tier_items = self.pack.tiers[self.tier - 1].shop_num_items
+        tier_bois = self.pack.tiers[self.tier - 1].shop_num_bois
+
         # Add frozen items and bois to the shop
         self.shop_bois.extend(self.frozen_bois)
         self.shop_items.extend(self.frozen_items)
+
+        # Truncate the shop if somehow there are too many items or bois
+        while len(self.shop_items) > tier_items:
+            self.shop_items.pop()
+        while len(self.shop_bois) > tier_bois:
+            self.shop_bois.pop()
 
         # Generate new bois for the shop
         boi_builders = []
         for tier in range(1, self.tier + 1):
             boi_builders.extend(self.pack.tiers[tier - 1].boi_builders)
-        num_bois = self.pack.tiers[self.tier - 1].shop_num_bois
-        for _ in range(min(num_bois, len(boi_builders))):
+        for _ in range(tier_bois - len(self.shop_bois)):
             boi_template = random.choice(boi_builders)
             self.shop_bois.append(boi_template.build())
 
@@ -111,8 +119,7 @@ class ShopSystem(TeamSystem):
         available_items = []
         for tier in range(1, self.tier + 1):
             available_items.extend(self.pack.tiers[tier - 1].item_builders)
-        num_items = self.pack.tiers[self.tier - 1].shop_num_items
-        for _ in range(min(num_items, len(available_items))):
+        for _ in range(tier_items - len(self.shop_items)):
             self.shop_items.append(random.choice(available_items).build())
 
     def _roll(self) -> None:
@@ -123,7 +130,7 @@ class ShopSystem(TeamSystem):
         if not self.valid_roll():
             raise ValueError("Not enough money to roll")
         # Deduct the roll price
-        self.money -= self._roll_price
+        self.money -= self.roll_price
         # Perform a free roll
         self._free_roll()
 
@@ -177,7 +184,7 @@ class ShopSystem(TeamSystem):
 
         return (
             boi in self.shop_bois
-            and self.money >= self._boi_price
+            and self.money >= self.boi_price
             and len(self.get_team().bois) < MAX_TEAM_SIZE
         )
 
@@ -197,7 +204,7 @@ class ShopSystem(TeamSystem):
         boi = cast(Boi, boi)
 
         # Process the purchase
-        self.money -= self._boi_price
+        self.money -= self.boi_price
         self.get_team().bois.append(boi)
         self.shop_bois.remove(boi)
 
@@ -315,7 +322,7 @@ class ShopSystem(TeamSystem):
             return False
         if bought.type_name != target.type_name:
             return False
-        if self.money < self._boi_price:
+        if self.money < self.boi_price:
             return False
         return True
 
@@ -337,7 +344,7 @@ class ShopSystem(TeamSystem):
         target = cast(Boi, target)
 
         # Process the purchase
-        self.money -= self._boi_price
+        self.money -= self.boi_price
         self.shop_bois.remove(bought)
 
         self.teams[0].bois.append(bought)
