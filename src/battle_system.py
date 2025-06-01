@@ -58,7 +58,7 @@ class BattleSystem(TeamSystem):
 
         for boi in attackers:
             other_boi = self._first_boi(self.other_team(boi))
-            self.send_event(Event(type="attack", target=boi))
+            self.send_event(Event(type="attack", target=other_boi, source=boi))
             self.send_event(
                 Event(
                     type="damage",
