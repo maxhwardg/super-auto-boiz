@@ -8,9 +8,6 @@ from boi import Boi, MAX_BOI_LEVEL, LEVEL_UP_EXPERIENCE, MAX_ATTACK, MAX_HEALTH
 from item import Item
 from pack import Pack
 
-BOI_PRICE = 3  # Standard price for bois
-ROLL_PRICE = 1  # Standard price for rolling
-
 
 class ShopSystem(TeamSystem):
     """
@@ -26,6 +23,8 @@ class ShopSystem(TeamSystem):
         tier: int,
         money: int,
         event_callbacks: List[Callable[[Event], None]],
+        roll_price: int = 1,
+        boi_price: int = 3,
     ) -> None:
         super().__init__([team], event_callbacks)
         self.pack = pack
@@ -35,6 +34,8 @@ class ShopSystem(TeamSystem):
         self.shop_items: List[Item] = []
         self.frozen_bois: List[Boi] = []
         self.frozen_items: List[Item] = []
+        self._roll_price = roll_price
+        self._boi_price = boi_price
 
         if tier < 1 or tier > pack.num_tiers:
             raise ValueError("Invalid tier")
@@ -80,7 +81,7 @@ class ShopSystem(TeamSystem):
         """
         Check if the current tier is valid for rolling.
         """
-        return self.money >= ROLL_PRICE
+        return self.money >= self._roll_price
 
     def _free_roll(self) -> None:
         """
@@ -122,7 +123,7 @@ class ShopSystem(TeamSystem):
         if not self.valid_roll():
             raise ValueError("Not enough money to roll")
         # Deduct the roll price
-        self.money -= ROLL_PRICE
+        self.money -= self._roll_price
         # Perform a free roll
         self._free_roll()
 
@@ -176,7 +177,7 @@ class ShopSystem(TeamSystem):
 
         return (
             boi in self.shop_bois
-            and self.money >= BOI_PRICE
+            and self.money >= self._boi_price
             and len(self.get_team().bois) < MAX_TEAM_SIZE
         )
 
@@ -196,7 +197,7 @@ class ShopSystem(TeamSystem):
         boi = cast(Boi, boi)
 
         # Process the purchase
-        self.money -= BOI_PRICE
+        self.money -= self._boi_price
         self.get_team().bois.append(boi)
         self.shop_bois.remove(boi)
 
@@ -314,7 +315,7 @@ class ShopSystem(TeamSystem):
             return False
         if bought.type_name != target.type_name:
             return False
-        if self.money < BOI_PRICE:
+        if self.money < self._boi_price:
             return False
         return True
 
@@ -336,7 +337,7 @@ class ShopSystem(TeamSystem):
         target = cast(Boi, target)
 
         # Process the purchase
-        self.money -= BOI_PRICE
+        self.money -= self._boi_price
         self.shop_bois.remove(bought)
 
         self.teams[0].bois.append(bought)
